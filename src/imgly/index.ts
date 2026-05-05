@@ -76,5 +76,4 @@ export async function initContentModerationEditor(
       include: ['ly.img.templates.premium.*']
     })
   );
-
 }
