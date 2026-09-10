@@ -15,6 +15,7 @@ import { resolveAssetPath } from '../imgly/resolveAssetPath';
 import { Sidebar } from './components/Sidebar';
 import './App.css';
 
+
 interface AppProps {
   config: Configuration;
 }
