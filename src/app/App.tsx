@@ -15,6 +15,7 @@ import { resolveAssetPath } from '../imgly/resolveAssetPath';
 import { Sidebar } from './components/Sidebar';
 import './App.css';
 
+
 interface AppProps {
   config: Configuration;
 }
@@ -27,7 +28,7 @@ export default function App({ config }: AppProps) {
     await initContentModerationEditor(instance);
 
     // Load the scene
-    await instance.loadFromURL(resolveAssetPath('/assets/example.scene'));
+    await instance.load(resolveAssetPath('/assets/example.scene'));
 
     setCesdk(instance);
   }, []);
