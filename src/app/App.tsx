@@ -11,9 +11,9 @@ import type CreativeEditorSDK from '@cesdk/cesdk-js';
 import type { Configuration } from '@cesdk/cesdk-js';
 
 import { initContentModerationEditor } from '../imgly';
-import { resolveAssetPath } from '../imgly/resolveAssetPath';
 import { Sidebar } from './components/Sidebar';
 import './App.css';
+import { DEMO_ASSETS_BASE_URL } from '../imgly/demo-assets';
 
 
 interface AppProps {
@@ -24,11 +24,10 @@ export default function App({ config }: AppProps) {
   const [cesdk, setCesdk] = useState<CreativeEditorSDK | null>(null);
 
   const handleInit = useCallback(async (instance: CreativeEditorSDK) => {
-    (window as any).cesdk = instance;
     await initContentModerationEditor(instance);
 
     // Load the scene
-    await instance.load(resolveAssetPath('/assets/example.scene'));
+    await instance.load(`${DEMO_ASSETS_BASE_URL}/assets/example.scene`);
 
     setCesdk(instance);
   }, []);
