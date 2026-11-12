@@ -3,45 +3,52 @@
  *
  * Manages the moderation sidebar UI including:
  * - Validate button with loading state
- * - Results list with status indicators
+ * - Results list with status indicators, for images and text
+ * - Blocks the service could not check
  * - Block selection on click
  */
 
-import { useCallback, useState } from 'react';
+import { useCallback, useSyncExternalStore } from 'react';
 
 import type CreativeEditorSDK from '@cesdk/cesdk-js';
 
-import { checkImageContent } from '../../moderation';
+import type {
+  ModerationSession,
+  ModerationSnapshot
+} from '../../moderation-session';
 import { selectBlocks } from '../../utils';
-import type { ModerationResult } from '../../types';
-import { ResultItem } from './ResultItem';
+import { ResultItem, UncheckedItem } from './ResultItem';
 import './Sidebar.css';
 import { DEMO_ASSETS_BASE_URL } from '../../../imgly/demo-assets';
 
 interface SidebarProps {
   cesdk: CreativeEditorSDK | null;
+  /** Owns the check, so the export check and the toolbar share its result. */
+  session: ModerationSession | null;
 }
 
-export function Sidebar({ cesdk }: SidebarProps) {
-  const [results, setResults] = useState<ModerationResult[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+const IDLE: ModerationSnapshot = {
+  report: null,
+  isLoading: false,
+  error: null,
+  lastRunFailed: false
+};
+const noSubscription = () => () => {};
 
-  const unsuccessfulResults = results.filter((r) => r.state !== 'success');
+export function Sidebar({ cesdk, session }: SidebarProps) {
+  const { report, isLoading, error, lastRunFailed } = useSyncExternalStore(
+    session?.subscribe ?? noSubscription,
+    session?.getSnapshot ?? (() => IDLE)
+  );
 
-  const handleValidate = useCallback(async () => {
-    if (!cesdk) return;
-    setIsLoading(true);
-    setError(null);
-    try {
-      const newResults = await checkImageContent(cesdk.engine);
-      setResults(newResults);
-    } catch {
-      setError('The moderation check failed. Try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [cesdk]);
+  const unsuccessfulResults =
+    report?.results.filter((r) => r.state !== 'success') ?? [];
+  const unchecked = report?.unchecked ?? [];
+  const resultCount = unsuccessfulResults.length + unchecked.length;
+
+  const handleValidate = useCallback(() => {
+    void session?.check();
+  }, [session]);
 
   const handleSelectBlock = useCallback(
     (blockId: number) => {
@@ -59,7 +66,7 @@ export function Sidebar({ cesdk }: SidebarProps) {
         <button
           className="moderation-validate-btn"
           onClick={handleValidate}
-          disabled={!cesdk || isLoading}
+          disabled={!cesdk || !session || isLoading}
         >
           <img
             src={`${DEMO_ASSETS_BASE_URL}/assets/icons/refresh.svg`}
@@ -70,8 +77,8 @@ export function Sidebar({ cesdk }: SidebarProps) {
           <span>{isLoading ? 'Checking...' : 'Validate Content'}</span>
         </button>
         <span className="moderation-header-info">
-          {unsuccessfulResults.length} result
-          {unsuccessfulResults.length !== 1 ? 's' : ''}
+          {resultCount} result
+          {resultCount !== 1 ? 's' : ''}
         </span>
       </div>
       <div className="moderation-list">
@@ -80,24 +87,45 @@ export function Sidebar({ cesdk }: SidebarProps) {
             {error}
           </div>
         )}
-        {unsuccessfulResults.length === 0 ? (
-          <div
-            className="moderation-status-text"
-            dangerouslySetInnerHTML={{
-              __html:
-                results.length === 0
-                  ? 'No check has been performed yet.'
-                  : 'No content violations found.<br/>Add possibly offensive content and run it again.'
-            }}
-          />
+        {unchecked.length > 0 && (
+          <p className="moderation-unchecked-note">
+            {unchecked.length} block{unchecked.length !== 1 ? 's' : ''} could
+            not be checked, so this design is not confirmed clean.
+          </p>
+        )}
+        {resultCount === 0 ? (
+          <div className="moderation-status-text">
+            {report == null ? (
+              lastRunFailed ? (
+                'The last check did not finish, so no results are shown.'
+              ) : (
+                'No check has been performed yet.'
+              )
+            ) : (
+              <span>
+                No content violations found.
+                <br />
+                Every image and text block was checked and nothing was flagged.
+              </span>
+            )}
+          </div>
         ) : (
-          unsuccessfulResults.map((result) => (
-            <ResultItem
-              key={`${result.blockId}-${result.name}`}
-              result={result}
-              onSelect={handleSelectBlock}
-            />
-          ))
+          <>
+            {unsuccessfulResults.map((result) => (
+              <ResultItem
+                key={`${result.blockId}-${result.name}`}
+                result={result}
+                onSelect={handleSelectBlock}
+              />
+            ))}
+            {unchecked.map((block) => (
+              <UncheckedItem
+                key={`${block.blockId}-unchecked`}
+                block={block}
+                onSelect={handleSelectBlock}
+              />
+            ))}
+          </>
         )}
       </div>
     </div>

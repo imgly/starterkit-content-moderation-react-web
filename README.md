@@ -1,6 +1,6 @@
 # Content Moderation Editor Starter Kit
 
-Content moderation made easy. Decide what type of imagery to restrict and receive automatic notifications flagging content that might be violating your guidelines. Built with [CE.SDK](https://img.ly/creative-sdk) by [IMG.LY](https://img.ly), runs entirely in the browser using external moderation APIs.
+Content moderation made easy. Check every image and text in a design and see which content might violate your guidelines. Built with [CE.SDK](https://img.ly/creative-sdk) by [IMG.LY](https://img.ly). The editor runs in the browser and checks content with the [IMG.LY Gateway](https://img.ly/dashboard).
 
 <p>
   <a href="https://img.ly/docs/cesdk/js/starterkits/content-moderation-abc123/">Documentation</a>
@@ -33,6 +33,28 @@ unzip imgly-assets.zip -d public/
 rm imgly-assets.zip
 ```
 
+### Configure the IMG.LY Gateway
+
+The starterkit checks content with the `imgly/detection` model on the IMG.LY Gateway at `https://gateway.img.ly`. To run a check:
+
+1. Create an API key in the [IMG.LY dashboard](https://img.ly/dashboard).
+2. Copy `.env.example` to `.env` and paste the key.
+
+```bash
+cp .env.example .env
+```
+
+```env
+# API key from https://img.ly/dashboard
+VITE_AI_API_KEY=sk_your_api_key_here
+```
+
+Without a key, or with a key the gateway rejects, the starterkit shows a setup screen instead of the editor.
+
+> **Heads up.** The key is sent from the browser. That's fine for local development. For production, change `resolveAiToken` in `src/app/ai-credentials/ai-credentials.ts` to return a short-lived token minted by your backend — see [Gateway Provider](https://img.ly/docs/cesdk/js/user-interface/ai-integration/gateway-provider-06df22/) for the pattern.
+
+A check sends each image URL and the words of each text block to the gateway. An image the gateway cannot download, such as an upload from the user's computer or an image on a private network address or a local host name, is rendered as a JPEG and uploaded first.
+
 ### Run the Development Server
 
 ```bash
@@ -40,6 +62,10 @@ npm run dev
 ```
 
 Open `http://localhost:5173` in your browser.
+
+## Export Check
+
+Every export button runs the `exportDesign` action. `src/app/export-gate.ts` wraps it, so an export goes ahead without a question only when the last check covered every block, flagged nothing, and the design has not changed since. Otherwise the editor's warning dialog offers Moderate now, Export anyway and Cancel. To stop flagged designs from being exported at all, remove the Export anyway action there.
 
 ## Configuration
 
@@ -87,6 +113,14 @@ See [Localization](https://img.ly/docs/cesdk/js/user-interface/localization-508e
 ```
 src/
 ├── app/                          # Demo application
+│   ├── ai-credentials/               # Gateway key, preflight check, setup screen
+│   ├── App.tsx                       # Key check, then the editor and the sidebar
+│   ├── components/Sidebar/           # Moderation results sidebar
+│   ├── export-gate.ts                # Asks before exporting unconfirmed content
+│   ├── gateway.ts                    # IMG.LY Gateway detection client
+│   ├── moderation-button.ts          # "Moderate Content" navigation bar button
+│   ├── moderation-session.ts         # Check state shared by sidebar and export
+│   └── moderation.ts                 # Scene scan and category mapping
 ├── imgly/
 │   ├── config/
 │   │   ├── actions.ts                # Export/import actions
@@ -108,12 +142,13 @@ src/
 
 ## Key Capabilities
 
-- **Content Moderation** – Check images for inappropriate content
-- **Policy Categories** – Weapons, alcohol, drugs, nudity detection
-- **Real-time Validation** – Validate designs before publishing
+- **Content Moderation** – Check images and text for inappropriate content
+- **Policy Categories** – Nudity, weapons, drugs, alcohol, offensive symbols and gore in images; toxic, insulting, discriminatory, violent, sexual and self-harm language in text
+- **Real-time Validation** – Validate designs from the sidebar or the "Moderate Content" button in the navigation bar
+- **Export Check** – An export of a design that is not confirmed clean asks first, with Moderate now, Export anyway and Cancel
 - **Block Selection** – Quickly navigate to flagged content
 - **Full Design Editor** – Complete editing with text, images, and shapes
-- **Export** – PNG, JPEG, PDF with quality controls
+- **Export** – PNG and PDF
 
 ## Prerequisites
 
@@ -122,11 +157,14 @@ src/
 
 ## Troubleshooting
 
-| Issue | Solution |
-|-------|----------|
-| Editor doesn't load | Verify assets are accessible at `baseURL` |
-| Assets don't appear | Check `public/assets/` directory exists |
-| Watermark appears | Add your license key |
+| Issue                              | Solution                                                   |
+| ---------------------------------- | ---------------------------------------------------------- |
+| Editor doesn't load                | Verify assets are accessible at `baseURL`                  |
+| Assets don't appear                | Check `public/assets/` directory exists                    |
+| Watermark appears                  | Add your license key                                       |
+| Setup screen instead of the editor | Set `VITE_AI_API_KEY` in `.env` and restart the dev server |
+| Some blocks "could not be checked" | The gateway failed for those blocks; run the check again   |
+| Export asks before it starts       | Run the check again after your last change                 |
 
 ## Documentation
 
