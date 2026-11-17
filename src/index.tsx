@@ -1,8 +1,8 @@
 /**
  * CE.SDK Content Moderation Editor Starterkit - React Entry Point
  *
- * Demonstrates content moderation by checking images and text for
- * inappropriate content with the IMG.LY Gateway.
+ * Demonstrates content moderation by checking images for inappropriate content
+ * using external moderation APIs.
  *
  * @see https://img.ly/docs/cesdk/js/get-started/overview-e18f40/
  */
